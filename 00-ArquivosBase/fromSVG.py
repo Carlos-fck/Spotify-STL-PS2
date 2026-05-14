@@ -1,6 +1,6 @@
 import trimesh
 from svgpathtools import svg2paths
-from shapely.geometry import Polygon, MultiPolygon, LineString
+from shapely.geometry import Polygon, MultiPolygon, LineString, Point
 from shapely.affinity import scale, translate
 from shapely.ops import unary_union
 import numpy as np
@@ -14,9 +14,13 @@ output_path = "Spotify_Keychain.stl"
 svg_extrude_height = 1.0
 padding = 1.0
 base_width = 80.0
-base_height = 15.0
+base_height = 14.0
 corner_radius = 2.0        # Raio para arredondar cantos (mm)
 buffer_resolution = 16     # Resolução do buffer de arredondamento
+
+# Circle settings
+circle_radius = 5        # Raio do círculo (mm)
+circle_offset = 4        # Offset do círculo das barras (mm)
 
 def sample_path_to_polygon(path, num_points=900): 
     points = []
@@ -77,7 +81,7 @@ def load_svg_polygons(svg_path):
     print(f"Polygons to extrude: {len(rect_polys)}")
     return MultiPolygon(rect_polys)
 
-def fit_and_center_polygon(polygon, width, height, padding=2.0, offset_x_correction=1.75, offset_y_correction=1.75):
+def fit_and_center_polygon(polygon, width, height, padding=3.0, offset_x_correction=1.75, offset_y_correction=1.75):
     # Bounds do SVG
     minx, miny, maxx, maxy = polygon.bounds
     svg_width = maxx - minx
@@ -102,14 +106,17 @@ def fit_and_center_polygon(polygon, width, height, padding=2.0, offset_x_correct
 
     return translate(scaled, xoff=offset_x, yoff=offset_y)
 
-def fit_and_center_multipolygon(multipolygon, width, height, padding=2.0, offset_x_correction=1.75, offset_y_correction=1.75):
+def fit_and_center_multipolygon(multipolygon, width, height, padding=2.0, offset_x_correction=2.0, offset_y_correction=1.75):
     minx, miny, maxx, maxy = multipolygon.bounds
     svg_width = maxx - minx
     svg_height = maxy - miny
     scale_x = (width - 2 * padding) / svg_width
     scale_y = (height - 2 * padding) / svg_height
     scale_factor = min(scale_x, scale_y)
+    
+    # Remove horizontal flip - back to normal orientation
     scaled = scale(multipolygon, xfact=scale_factor, yfact=scale_factor, origin=(0, 0))
+    
     minx, miny, maxx, maxy = scaled.bounds
     new_width = maxx - minx
     new_height = maxy - miny
@@ -119,6 +126,8 @@ def fit_and_center_multipolygon(multipolygon, width, height, padding=2.0, offset
 
 def extrude_polygon(polygon, height, corner_radius=0.0, buffer_resolution=16):
     """Extrude polygon with rounded end-caps or rounded corners"""
+    original_polygon = polygon
+    
     # Se for retângulo simples (4 arestas), criar cápsula usando linha central
     if corner_radius and corner_radius > 0:
         try:
@@ -143,19 +152,37 @@ def extrude_polygon(polygon, height, corner_radius=0.0, buffer_resolution=16):
                 polygon = polygon.buffer(-corner_radius, resolution=buffer_resolution, join_style=1)
         except Exception as e:
             print(f"⚠ Erro no buffer de arredondamento: {e}")
+            polygon = original_polygon  # Use original if buffer fails
+
+    # Ensure polygon is valid before extrusion
+    if not polygon.is_valid:
+        print(f"⚠ Invalid polygon detected, using original")
+        polygon = original_polygon
 
     # Extrude to mesh
-    if polygon.geom_type == 'Polygon':
-        mesh = trimesh.creation.extrude_polygon(polygon, height)
-    elif polygon.geom_type == 'MultiPolygon':
-        mesh = trimesh.util.concatenate([
-            trimesh.creation.extrude_polygon(p, height)
-            for p in polygon.geoms if p.is_valid
-        ])
-    else:
-        raise ValueError("Unsupported geometry type")
-
-    return mesh
+    try:
+        if polygon.geom_type == 'Polygon':
+            mesh = trimesh.creation.extrude_polygon(polygon, height)
+        elif polygon.geom_type == 'MultiPolygon':
+            mesh = trimesh.util.concatenate([
+                trimesh.creation.extrude_polygon(p, height)
+                for p in polygon.geoms if p.is_valid
+            ])
+        else:
+            raise ValueError(f"Unsupported geometry type: {polygon.geom_type}")
+        
+        print(f"✅ Successfully extruded {polygon.geom_type} with {len(mesh.vertices)} vertices")
+        return mesh
+        
+    except Exception as e:
+        print(f"⚠ Error during extrusion: {e}")
+        # Fallback: try with original polygon
+        if polygon != original_polygon:
+            print("Trying with original polygon...")
+            mesh = trimesh.creation.extrude_polygon(original_polygon, height)
+            return mesh
+        else:
+            raise e
 
 def place_extrusion_on_base(base, extrusion):
     # Get bounds of the base
@@ -166,7 +193,11 @@ def place_extrusion_on_base(base, extrusion):
 
     # Get bounds of the extrusion
     extr_min, extr_max = extrusion.bounds
-    shift_x = center_x - (extr_min[0] + extr_max[0]) / 2
+    
+    # Apply custom offset instead of perfect centering
+    offset_x_custom = -4.0  # Deslocamento para a direita em mm
+    
+    shift_x = center_x - (extr_min[0] + extr_max[0]) / 2 + offset_x_custom
     shift_y = center_y - (extr_min[1] + extr_max[1]) / 2
     shift_z = front_z - extr_min[2]  # place exactly on front surface
 
@@ -185,16 +216,36 @@ if not isinstance(base, trimesh.Trimesh):
 
 print("Processing SVG...")
 svg_multipoly = load_svg_polygons(svg_path)
-svg_fitted = fit_and_center_multipolygon(svg_multipoly, base_width, base_height, padding, offset_x_correction=1.75, offset_y_correction=3.5)
+svg_fitted = fit_and_center_multipolygon(svg_multipoly, base_width, base_height, padding, offset_x_correction=2.0, offset_y_correction=3.5)
+
+# Add a circle to the left of the bars
+print("Adding circle to the left of bars...")
+# Find the leftmost position of all polygons
+min_x = min(poly.bounds[0] for poly in svg_fitted.geoms)
+# Calculate center Y of all polygons
+all_bounds = svg_fitted.bounds
+center_y = (all_bounds[1] + all_bounds[3]) / 2
+# Position circle to the left with offset
+circle_center_x = min_x - circle_offset - circle_radius
+# Create circle as a buffered point
+circle = Point(circle_center_x, center_y).buffer(circle_radius, resolution=buffer_resolution)
+# Add circle to the geometry collection
+svg_fitted_with_circle = MultiPolygon(list(svg_fitted.geoms) + [circle])
 
 # Extrude each polygon with individual corner radius (half of polygon height)
 print("Extruding with per-polygon rounded corners...")
 svg_extrusions = []
-for poly in svg_fitted.geoms:
+for i, poly in enumerate(svg_fitted_with_circle.geoms):
     minx, miny, maxx, maxy = poly.bounds
-    # radius = half of polygon height
-    r = (maxy - miny) / 2
-    extr = extrude_polygon(poly, svg_extrude_height, corner_radius=r, buffer_resolution=buffer_resolution)
+    # For the circle (last element), don't apply corner radius to avoid double-rounding
+    if i == len(svg_fitted_with_circle.geoms) - 1:  # Last element is the circle
+        print(f"Extruding circle (no corner radius)...")
+        extr = extrude_polygon(poly, svg_extrude_height, corner_radius=0.0, buffer_resolution=buffer_resolution)
+    else:
+        # radius = half of polygon height for bars
+        r = (maxy - miny) / 2
+        print(f"Extruding bar {i} with corner radius {r:.2f}...")
+        extr = extrude_polygon(poly, svg_extrude_height, corner_radius=r, buffer_resolution=buffer_resolution)
     svg_extrusions.append(extr)
 
 print("Combining extrusions...")

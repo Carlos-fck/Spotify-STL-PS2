@@ -1,0 +1,16 @@
+.git
+.venv
+__pycache__
+*.pyc
+*.pyo
+*.pyd
+.env
+.pytest_cache
+.mypy_cache
+.ruff_cache
+.coverage
+htmlcov
+frontend/static/generated/*.stl
+Dockerfile
+docker-compose.yml
+README.md

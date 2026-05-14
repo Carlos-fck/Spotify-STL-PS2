@@ -9,8 +9,11 @@ A template for a FastAPI project with a Jinja2 fronted.
 
 ## Docker
 
-1.  Build the image: `docker-compose build`
-2.  Run the container: `docker-compose up`
+1.  Build the image: `docker compose build`
+2.  Run the container: `docker compose up`
+3.  Open the app: `http://127.0.0.1:8010`
+
+Generated STL files are written to `frontend/static/generated` and are mounted as a volume in Docker Compose.
 
 ## API Examples
 

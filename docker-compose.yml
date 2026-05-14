@@ -7,6 +7,7 @@ services:
     volumes:
       - ./frontend/static/generated:/app/frontend/static/generated
     environment:
+      PORT: 8000
       PROJECT_NAME: SoundChain
       API_V1_STR: /api/v1
     restart: unless-stopped

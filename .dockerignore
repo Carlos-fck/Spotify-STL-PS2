@@ -11,6 +11,3 @@ __pycache__
 .coverage
 htmlcov
 frontend/static/generated/*.stl
-Dockerfile
-docker-compose.yml
-README.md

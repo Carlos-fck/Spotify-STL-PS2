@@ -1,13 +1,8 @@
-// Dummy file
-// Global variables
 let currentTrackInfo = null;
 let currentSpotifyCodeSvg = null;
 
-// Configuration - Update these URLs to match your FastAPI backend
-//const API_BASE_URL = 'http://localhost:8000'; // Change this to your FastAPI server URL
-const API_BASE_URL = ''; // Change this to your FastAPI server URL
+const API_BASE_URL = ''; 
 
-// DOM Elements
 const spotifyUrlInput = document.getElementById('spotifyUrl');
 const urlValidation = document.getElementById('urlValidation');
 const errorMessage = document.getElementById('errorMessage');
@@ -21,16 +16,13 @@ const trackInfoContent = document.getElementById('trackInfoContent');
 const spotifyCodeSection = document.getElementById('spotifyCodeSection');
 const spotifyCodeDisplay = document.getElementById('spotifyCodeDisplay');
 
-// Initialize event listeners
 document.addEventListener('DOMContentLoaded', function() {
     spotifyUrlInput.addEventListener('input', handleUrlChange);
     spotifyUrlInput.addEventListener('paste', function(e) {
-        // Handle paste event with a small delay to get the pasted content
         setTimeout(() => handleUrlChange(e), 10);
     });
 });
 
-// Utility functions
 function validateSpotifyUrl(url) {
     const spotifyRegex = /^https:\/\/open\.spotify\.com\/(track|album|playlist|artist)\/[a-zA-Z0-9]+(\?.*)?$/;
     return spotifyRegex.test(url);
@@ -94,7 +86,6 @@ function setProcessingState(isProcessing) {
     }
 }
 
-// Event handlers
 function handleUrlChange(e) {
     const url = e.target.value;
     const isValid = validateSpotifyUrl(url);
@@ -104,7 +95,6 @@ function handleUrlChange(e) {
     hideError();
     previewSection.classList.add('hidden');
     
-    // Reset button state
     setProcessingState(false);
 }
 
@@ -112,7 +102,6 @@ function scrollToCreate() {
     document.getElementById('create').scrollIntoView({ behavior: 'smooth' });
 }
 
-// API functions - These will communicate with your FastAPI backend
 async function fetchSpotifyCodeSvg(spotifyUrl) {
     try {
         const response = await fetch(`${API_BASE_URL}/api/v1/generate_spotify_code`, {
@@ -128,57 +117,31 @@ async function fetchSpotifyCodeSvg(spotifyUrl) {
         }
 
         const data = await response.json();
-        return data.svg_content;
-    } catch (error) {
-        console.warn('Backend not available, using mock Spotify Code SVG:', error.message);
         
-        // Fallback to mock SVG for development/testing
-        return `<svg width="320" height="80" viewBox="0 0 320 80" xmlns="http://www.w3.org/2000/svg">
-            <rect width="320" height="80" fill="#FFFFFF"/>
-            <g fill="#000000">
-                <rect x="20" y="20" width="4" height="40"/>
-                <rect x="28" y="15" width="2" height="50"/>
-                <rect x="34" y="25" width="6" height="30"/>
-                <rect x="44" y="10" width="3" height="60"/>
-                <rect x="52" y="20" width="4" height="40"/>
-                <rect x="60" y="18" width="2" height="44"/>
-                <rect x="66" y="22" width="5" height="36"/>
-                <rect x="75" y="12" width="3" height="56"/>
-                <rect x="82" y="25" width="4" height="30"/>
-                <rect x="90" y="15" width="2" height="50"/>
-                <rect x="96" y="20" width="6" height="40"/>
-                <rect x="106" y="18" width="3" height="44"/>
-                <rect x="114" y="22" width="4" height="36"/>
-                <rect x="122" y="10" width="2" height="60"/>
-                <rect x="128" y="25" width="5" height="30"/>
-                <rect x="137" y="15" width="3" height="50"/>
-                <rect x="144" y="20" width="4" height="40"/>
-                <rect x="152" y="12" width="2" height="56"/>
-                <rect x="158" y="25" width="6" height="30"/>
-                <rect x="168" y="18" width="3" height="44"/>
-                <rect x="175" y="20" width="4" height="40"/>
-                <rect x="183" y="15" width="2" height="50"/>
-                <rect x="189" y="22" width="5" height="36"/>
-                <rect x="198" y="10" width="3" height="60"/>
-                <rect x="205" y="25" width="4" height="30"/>
-                <rect x="213" y="18" width="2" height="44"/>
-                <rect x="219" y="20" width="6" height="40"/>
-                <rect x="229" y="15" width="3" height="50"/>
-                <rect x="236" y="22" width="4" height="36"/>
-                <rect x="244" y="12" width="2" height="56"/>
-                <rect x="250" y="25" width="5" height="30"/>
-                <rect x="259" y="18" width="3" height="44"/>
-                <rect x="266" y="20" width="4" height="40"/>
-                <rect x="274" y="15" width="2" height="50"/>
-                <rect x="280" y="10" width="6" height="60"/>
-            </g>
-        </svg>`;
+        if (data.svg_content) {
+            const container = document.getElementById("svg-container");
+            container.innerHTML = data.svg_content;
+            const section = document.getElementById("spotifyCodeSection");
+            section.classList.remove("hidden");
+        } else {
+            if (data.message && data.message.startsWith('http')) {
+                const container = document.getElementById("svg-container");
+                container.innerHTML = `<img src="${data.message}" alt="Spotify Code" class="w-full">`;
+                const section = document.getElementById("spotifyCodeSection");
+                section.classList.remove("hidden");
+            } else {
+                console.error("Neither SVG content nor image URL found in response.");
+            }
+            console.error("SVG content not found in response.");
+        }
+    } catch (error) {
+        console.error("Failed to fetch Spotify Code:", error);
     }
 }
 
 async function fetchTrackInfo(spotifyUrl) {
     try {
-        const response = await fetch(`${API_BASE_URL}/api/get-track-info`, {
+        const response = await fetch(`${API_BASE_URL}/api/v1/spotify`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -195,7 +158,6 @@ async function fetchTrackInfo(spotifyUrl) {
     } catch (error) {
         console.warn('Backend not available, using mock track info:', error.message);
         
-        // Fallback to mock data for development/testing
         const spotifyType = getSpotifyType(spotifyUrl);
         const mockTrackInfo = {
             track: {
@@ -236,7 +198,6 @@ async function fetchTrackInfo(spotifyUrl) {
     }
 }
 
-// Main generation function
 async function generateKeychain() {
     const spotifyUrl = spotifyUrlInput.value;
     
@@ -249,7 +210,6 @@ async function generateKeychain() {
     hideError();
 
     try {
-        // Fetch both the Spotify Code SVG and track information
         const [svgData, trackData] = await Promise.all([
             fetchSpotifyCodeSvg(spotifyUrl),
             fetchTrackInfo(spotifyUrl)
@@ -266,21 +226,16 @@ async function generateKeychain() {
     }
 }
 
-// Display functions
 function displayPreview(trackInfo, svgData) {
-    // Update track info title
     trackInfoTitle.textContent = `${trackInfo.type.charAt(0).toUpperCase() + trackInfo.type.slice(1)} Information`;
     
-    // Render track info content
     trackInfoContent.innerHTML = renderTrackInfo(trackInfo);
     
-    // Display Spotify Code SVG
     if (svgData) {
         spotifyCodeDisplay.innerHTML = svgData;
         spotifyCodeSection.classList.remove('hidden');
     }
     
-    // Show preview section
     previewSection.classList.remove('hidden');
 }
 
@@ -337,7 +292,6 @@ function renderTrackInfo(trackInfo) {
     }
 }
 
-// Purchase handler
 async function handlePurchase() {
     if (!currentTrackInfo || !currentSpotifyCodeSvg) {
         showError('Please generate a keychain first');
@@ -345,7 +299,6 @@ async function handlePurchase() {
     }
 
     try {
-        // Send data to your FastAPI backend for payment processing
         const response = await fetch(`${API_BASE_URL}/api/create-payment`, {
             method: 'POST',
             headers: {
@@ -364,7 +317,6 @@ async function handlePurchase() {
 
         const data = await response.json();
         
-        // Redirect to payment URL (Stripe checkout) or handle payment flow
         if (data.payment_url) {
             window.location.href = data.payment_url;
         } else {

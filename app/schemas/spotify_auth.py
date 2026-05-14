@@ -10,7 +10,8 @@ def get_spotify_access_token(client_id: str, client_secret: str) -> str:
             "Authorization": f"Basic {auth_header}",
             "Content-Type": "application/x-www-form-urlencoded"
         },
-        data={"grant_type": "client_credentials"}
+        data={"grant_type": "client_credentials"},
+        timeout=10,
     )
 
     response.raise_for_status()

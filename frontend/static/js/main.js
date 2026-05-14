@@ -1,5 +1,6 @@
 let currentTrackInfo = null;
 let currentSpotifyCodeSvg = null;
+let currentDownloadUrl = null;
 
 const API_BASE_URL = ''; 
 
@@ -15,6 +16,7 @@ const trackInfoTitle = document.getElementById('trackInfoTitle');
 const trackInfoContent = document.getElementById('trackInfoContent');
 const spotifyCodeSection = document.getElementById('spotifyCodeSection');
 const spotifyCodeDisplay = document.getElementById('spotifyCodeDisplay');
+const downloadStlBtn = document.getElementById('downloadStlBtn');
 
 document.addEventListener('DOMContentLoaded', function() {
     spotifyUrlInput.addEventListener('input', handleUrlChange);
@@ -104,7 +106,7 @@ function scrollToCreate() {
 
 async function fetchSpotifyCodeSvg(spotifyUrl) {
     try {
-        const response = await fetch(`${API_BASE_URL}/api/v1/generate_spotify_code`, {
+        const response = await fetch(`${API_BASE_URL}/api/v1/generate_spotify_code/`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -117,31 +119,22 @@ async function fetchSpotifyCodeSvg(spotifyUrl) {
         }
 
         const data = await response.json();
-        
-        if (data.svg_content) {
-            const container = document.getElementById("svg-container");
-            container.innerHTML = data.svg_content;
-            const section = document.getElementById("spotifyCodeSection");
-            section.classList.remove("hidden");
-        } else {
-            if (data.message && data.message.startsWith('http')) {
-                const container = document.getElementById("svg-container");
-                container.innerHTML = `<img src="${data.message}" alt="Spotify Code" class="w-full">`;
-                const section = document.getElementById("spotifyCodeSection");
-                section.classList.remove("hidden");
-            } else {
-                console.error("Neither SVG content nor image URL found in response.");
-            }
-            console.error("SVG content not found in response.");
+
+        if (data.preview_url) {
+            spotifyCodeDisplay.innerHTML = `<img src="${data.preview_url}" alt="Spotify Code" class="w-full">`;
+            spotifyCodeSection.classList.remove('hidden');
         }
+
+        return data;
     } catch (error) {
         console.error("Failed to fetch Spotify Code:", error);
+        throw error;
     }
 }
 
 async function fetchTrackInfo(spotifyUrl) {
     try {
-        const response = await fetch(`${API_BASE_URL}/api/v1/spotify`, {
+        const response = await fetch(`${API_BASE_URL}/api/v1/spotify/`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -217,6 +210,7 @@ async function generateKeychain() {
 
         currentSpotifyCodeSvg = svgData;
         currentTrackInfo = trackData;
+        currentDownloadUrl = svgData.download_url || null;
 
         displayPreview(trackData, svgData);
     } catch (error) {
@@ -231,9 +225,20 @@ function displayPreview(trackInfo, svgData) {
     
     trackInfoContent.innerHTML = renderTrackInfo(trackInfo);
     
-    if (svgData) {
-        spotifyCodeDisplay.innerHTML = svgData;
+    if (svgData && svgData.preview_url) {
+        spotifyCodeDisplay.innerHTML = `<img src="${svgData.preview_url}" alt="Spotify Code" class="w-full">`;
         spotifyCodeSection.classList.remove('hidden');
+    }
+
+    if (svgData && svgData.download_url) {
+        downloadStlBtn.href = svgData.download_url;
+        downloadStlBtn.setAttribute('download', svgData.download_url.split('/').pop() || 'soundchain-keychain.stl');
+        downloadStlBtn.setAttribute('aria-disabled', 'false');
+        downloadStlBtn.classList.remove('opacity-50', 'pointer-events-none');
+    } else {
+        downloadStlBtn.href = '#';
+        downloadStlBtn.setAttribute('aria-disabled', 'true');
+        downloadStlBtn.classList.add('opacity-50', 'pointer-events-none');
     }
     
     previewSection.classList.remove('hidden');
@@ -293,6 +298,11 @@ function renderTrackInfo(trackInfo) {
 }
 
 async function handlePurchase() {
+    if (currentDownloadUrl) {
+        window.location.href = currentDownloadUrl;
+        return;
+    }
+
     if (!currentTrackInfo || !currentSpotifyCodeSvg) {
         showError('Please generate a keychain first');
         return;

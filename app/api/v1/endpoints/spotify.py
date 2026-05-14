@@ -1,13 +1,19 @@
-from fastapi import APIRouter, HTTPException, Body
 import requests
+from fastapi import APIRouter, HTTPException
+from pydantic import BaseModel
 from urllib.parse import urlparse
+
 from app.core.config import settings
 from app.schemas.spotify_auth import get_spotify_access_token
 
 router = APIRouter()
 
-@router.post("/get-track-info")
-def get_spotify_info(spotify_url: str = Body(..., embed=True)):
+
+class SpotifyURLRequest(BaseModel):
+    spotify_url: str
+
+
+def fetch_spotify_info(spotify_url: str):
     parsed = urlparse(spotify_url)
     path_parts = parsed.path.strip("/").split("/")
     if len(path_parts) != 2:
@@ -17,11 +23,18 @@ def get_spotify_info(spotify_url: str = Body(..., embed=True)):
     if type_ not in ["track", "album", "playlist", "artist"]:
         raise HTTPException(status_code=400, detail="Unsupported Spotify type")
 
-    token = get_spotify_access_token(settings.SPOTIFY_CLIENT_ID, settings.SPOTIFY_CLIENT_SECRET)
+    if not settings.SPOTIFY_CLIENT_ID or not settings.SPOTIFY_CLIENT_SECRET:
+        raise HTTPException(status_code=503, detail="Spotify credentials are not configured")
+
+    try:
+        token = get_spotify_access_token(settings.SPOTIFY_CLIENT_ID, settings.SPOTIFY_CLIENT_SECRET)
+    except requests.RequestException as error:
+        raise HTTPException(status_code=502, detail="Failed to authenticate with Spotify") from error
+
     headers = {"Authorization": f"Bearer {token}"}
 
     url = f"https://api.spotify.com/v1/{type_}s/{spotify_id}"
-    response = requests.get(url, headers=headers)
+    response = requests.get(url, headers=headers, timeout=10)
 
     if not response.ok:
         raise HTTPException(status_code=response.status_code, detail="Failed to fetch from Spotify")
@@ -79,3 +92,13 @@ def get_spotify_info(spotify_url: str = Body(..., embed=True)):
                 "monthly_listeners": "—"  # Spotify API doesn't expose monthly listeners directly
             }
         }
+
+
+@router.post("/")
+def get_spotify_info(request: SpotifyURLRequest):
+    return fetch_spotify_info(request.spotify_url)
+
+
+@router.post("/get-track-info")
+def get_spotify_track_info(request: SpotifyURLRequest):
+    return fetch_spotify_info(request.spotify_url)

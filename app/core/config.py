@@ -1,9 +1,8 @@
 from pydantic_settings import BaseSettings
 
 class Settings(BaseSettings):
-    PROJECT_NAME: str = "FastAPI Template"
+    PROJECT_NAME: str = "SoundChain"
     API_V1_STR: str = "/api/v1"
-
     class Config:
         case_sensitive = True
 

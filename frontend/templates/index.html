@@ -45,6 +45,7 @@
             }
         }
 
+        /* Custom scrollbar */
         ::-webkit-scrollbar {
             width: 8px;
         }
@@ -62,11 +63,13 @@
             background: linear-gradient(180deg, #7c3aed, #db2777);
         }
 
+        /* Fix text cutoff issues */
         .text-fix {
             line-height: 1.4;
             overflow: visible;
         }
 
+        /* Ensure proper spacing for header icons */
         .header-icons {
             display: flex;
             align-items: center;
@@ -75,6 +78,7 @@
     </style>
 </head>
 <body class="min-h-screen bg-gradient-to-br from-purple-50 via-white to-pink-50">
+    <!-- Header -->
     <header class="bg-white/80 backdrop-blur-md border-b border-purple-100 sticky top-0 z-50">
         <div class="container mx-auto px-4 py-4">
             <div class="flex items-center justify-between">
@@ -112,6 +116,7 @@
         </div>
     </header>
 
+    <!-- Hero Section -->
     <section id="home" class="py-20 px-4">
         <div class="container mx-auto text-center">
             <div class="max-w-4xl mx-auto">
@@ -169,6 +174,7 @@
         </div>
     </section>
 
+    <!-- How It Works Section -->
     <section id="how-it-works" class="py-20 px-4 bg-gradient-to-r from-purple-50 to-pink-50">
         <div class="container mx-auto">
             <div class="text-center mb-16">
@@ -224,6 +230,7 @@
         </div>
     </section>
 
+    <!-- Product Creator Section -->
     <section id="create" class="py-20 px-4">
         <div class="container mx-auto">
             <div class="text-center mb-16">
@@ -258,6 +265,7 @@
                                 class="w-full px-6 py-4 border-2 border-gray-200 rounded-xl focus:border-purple-500 focus:outline-none transition-colors text-lg"
                             />
                             <div id="urlValidation" class="absolute right-4 top-1/2 transform -translate-y-1/2 hidden">
+                                <!-- Validation icons will be inserted here -->
                             </div>
                         </div>
 
@@ -290,6 +298,7 @@
                     </div>
                 </div>
 
+                <!-- Preview Section (Initially Hidden) -->
                 <div id="previewSection" class="bg-white rounded-3xl shadow-xl p-8 animate-fade-in hidden">
                     <h3 class="text-2xl font-bold mb-6 text-center text-fix">Preview Your Keychain</h3>
                     
@@ -298,6 +307,7 @@
                             <div class="bg-gradient-to-br from-purple-50 to-pink-50 rounded-2xl p-6">
                                 <h4 id="trackInfoTitle" class="text-lg font-semibold mb-4 text-fix">Track Information</h4>
                                 <div id="trackInfoContent">
+                                    <!-- Track info will be inserted here -->
                                 </div>
                             </div>
 
@@ -327,6 +337,7 @@
                                 <h4 class="text-lg font-semibold mb-4 text-fix">Generated Spotify Code</h4>
                                 <div class="bg-white rounded-lg p-4 border">
                                     <div id="spotifyCodeDisplay" class="w-full max-w-xs mx-auto">
+                                        <!-- SVG will be inserted here -->
                                     </div>
                                 </div>
                                 <p class="text-sm text-gray-600 mt-2 text-center leading-relaxed">
@@ -380,6 +391,7 @@
         </div>
     </section>
 
+    <!-- Footer -->
     <footer class="bg-gray-900 text-white py-16">
         <div class="container mx-auto px-4">
             <div class="grid grid-cols-1 md:grid-cols-4 gap-8 mb-8">
@@ -461,6 +473,6 @@
         </div>
     </footer>
 
-    <script src="script.js"></script>
+    <script src="static/js/main.js"></script>
 </body>
 </html>
